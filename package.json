@@ -1,0 +1,14 @@
+{
+  "name": "vin_course_data",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix my-app",
+    "etl": "npm run etl --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0",
+    "nodemon": "^3.0.0"
+  }
+}
