@@ -11,15 +11,21 @@ app.get("/api/progress", async (req, res) => {
     const pool = await getConnection();
 
     const result = await pool.request().query(`
-      SELECT 
-        participant_id,
-        course_id,
-        course_title,
-        completion,
-        first_accessed,
-        last_accessed
-      FROM dbo.CourseProgress
-      ORDER BY participant_id
+      SELECT *
+      FROM CourseProgress
+      ORDER BY 
+        CASE WHEN @sortField IS NOT NULL THEN completion END
+      OFFSET @page * @pageSize ROWS
+      FETCH NEXT @pageSize ROWS ONLY;
+      // SELECT 
+      //   participant_id,
+      //   course_id,
+      //   course_title,
+      //   completion,
+      //   first_accessed,
+      //   last_accessed
+      // FROM dbo.CourseProgress
+      // ORDER BY participant_id
     `);
 
     res.json(result.recordset);
