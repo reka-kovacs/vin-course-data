@@ -1,56 +1,59 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  flexRender,
-  SortingState,
-  Table,
-  PaginationState,
-  ColumnPinningState,
-  RowData,
-} from "@tanstack/react-table";
-declare module "@tanstack/react-table" {
-  interface ColumnMeta<TData extends RowData, TValue> {
-    className: string;
-  }
-}
+  ClientSideRowModelModule,
+  ColDef,
+  ColumnApiModule,
+  ColumnAutoSizeModule,
+  ValidationModule,
+  themeQuartz,
+  CellStyleModule,
+  ModuleRegistry,
+  PaginationModule,
+} from "ag-grid-community";
+import { AgGridProvider, AgGridReact } from "ag-grid-react";
+import { RowInfo, RawRecord, TransformedData, CellData } from "./types";
+const modules = [
+  CellStyleModule,
+  PaginationModule,
+  ColumnApiModule,
+  ColumnAutoSizeModule,
+  ClientSideRowModelModule,
+  CellStyleModule,
+  ...(process.env.NODE_ENV !== "production" ? [ValidationModule] : []),
+];
 
-// TYPES
-type RawRecord = {
-  participant_id: number;
-  course_id: number;
-  course_title: string | null;
-  completion: number | null;
-  last_accessed: string | null;
-};
+ModuleRegistry.registerModules(modules);
 
-type CellData = {
-  completion: number | null;
-  last_accessed: string | null;
-  metadata?: {
-    time_last_accessed: string;
-  };
-};
-
-type RowInfo = {
-  participant_id: number;
-  [courseID: number]: CellData | number;
-};
-
-type Course = {
-  id: number;
-  title: string;
-};
-
-// TData
-type TransformedData = {
-  rows: RowInfo[];
-  courses: Course[];
-};
+export const myTheme = themeQuartz.withParams({
+  accentColor: "#15BDE8",
+  backgroundColor: "#0C0C0D",
+  borderColor: "#ffffff00",
+  borderRadius: 20,
+  browserColorScheme: "dark",
+  cellHorizontalPaddingScale: 1,
+  chromeBackgroundColor: {
+    ref: "backgroundColor",
+  },
+  columnBorder: false,
+  fontFamily: {
+    googleFont: "Roboto",
+  },
+  fontSize: 16,
+  foregroundColor: "#BBBEC9",
+  headerBackgroundColor: "#182226",
+  headerFontWeight: 500,
+  headerTextColor: "#FFFFFF",
+  headerVerticalPaddingScale: 0.9,
+  iconSize: 20,
+  rowBorder: true,
+  rowVerticalPaddingScale: 1.2,
+  sidePanelBorder: false,
+  spacing: 8,
+  wrapperBorder: false,
+  wrapperBorderRadius: 0,
+});
 
 // TRANSFORMATION
 function transformForTable(data: RawRecord[]): TransformedData {
@@ -120,85 +123,102 @@ function getColor(completion?: number | null) {
 
 // COMPONENT
 export default function MyTable() {
-  const [data, setData] = useState<TransformedData>({
-    rows: [],
-    courses: [],
-  });
+  const [rowData, setRowData] = useState<RowInfo[]>([]);
+  const [colDefs, setColDefs] = useState<any>([]);
 
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const defaultColDef = useMemo<ColDef>(() => {
+    return {
+      flex: 1,
+      minWidth: 120,
+      resizable: true,
+    };
+  }, []);
 
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  // const [sorting, setSorting] = useState<SortingState>([]);
 
-  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
-    left: [],
-    right: [],
-  });
+  // const [pagination, setPagination] = React.useState<PaginationState>({
+  //   pageIndex: 0,
+  //   pageSize: 10,
+  // });
+
+  // const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+  //   left: [],
+  //   right: [],
+  // });
+  const datasource = {
+    getRows: async (params: any) => {
+      const { startRow, endRow, sortModel } = params.request;
+
+      const pageSize = endRow - startRow;
+      const page = startRow / pageSize;
+
+      const sort = sortModel[0];
+      const sortField = sort?.colId;
+      const sortDirection = sort?.sort;
+
+      try {
+        const res = await fetch(
+          `http://localhost:3001/api/progress?page=${page}&pageSize=${pageSize}&sortField=${sortField}&sortDir=${sortDirection}`,
+        );
+
+        const data = await res.json();
+
+        const transformed = transformForTable(data.rows);
+
+        params.success({
+          rowData: transformed.rows,
+          rowCount: data.totalCount, // total rows in DB
+        });
+      } catch (err) {
+        console.error(err);
+        params.fail();
+      }
+    },
+  };
 
   useEffect(() => {
     fetch("http://localhost:3001/api/progress")
       .then((res) => res.json())
       .then((raw: RawRecord[]) => {
         const transformed = transformForTable(raw);
-        setData(transformed);
+
+        setRowData(transformed.rows);
+
+        const dynamicCols: ColDef[] = transformed.courses.map((course) => ({
+          field: String(course.id),
+          headerName: "Course " + String(course.id),
+          sortable: true,
+          valueFormatter: (params) => formatCell(params.value),
+          cellStyle: function (params) {
+            return {
+              backgroundColor: getColor(params.value?.completion),
+              color: "#faf5f5",
+            };
+          },
+          comparator: (a: CellData, b: CellData) => {
+            const valA = a?.completion ?? -1;
+            const valB = b?.completion ?? -1;
+            return valA - valB;
+          },
+        }));
+
+        const cols: ColDef[] = [
+          {
+            field: "participant_id",
+            headerName: "Participant",
+            pinned: "left",
+            sortable: true,
+          },
+          ...dynamicCols,
+        ];
+
+        setColDefs(cols);
       })
       .catch((err) => console.error("Failed to fetch data:", err));
   }, []);
 
-  const columns = useMemo(() => {
-    return [
-      {
-        accessorKey: "participant_id",
-        header: "Participant ID",
-        meta: {
-          className: "sticky left-0",
-        },
-      },
-      ...data.courses.map((course) => ({
-        id: String(course.id),
-        header: String(course.id),
-        cell: ({ row }: any) => {
-          const cell: CellData | undefined = row.original[course.id];
-
-          return (
-            <div
-              style={{
-                whiteSpace: "pre-line",
-                padding: "6px",
-                borderRadius: "6px",
-                backgroundColor: getColor(cell?.completion),
-              }}
-            >
-              {formatCell(cell)}
-            </div>
-          );
-        },
-      })),
-    ];
-  }, [data]);
-
-  const table = useReactTable({
-    data: data.rows,
-    columns,
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onColumnPinningChange: setColumnPinning,
-    onPaginationChange: setPagination,
-    //no need to pass pageCount or rowCount with client-side pagination as it is calculated automatically
-    state: {
-      pagination,
-      sorting,
-      columnPinning,
-    },
-    // autoResetPageIndex: false, // turn off page index reset when sorting or filtering
-  });
-
   return (
-    <div>
+    <div className="min-h-full">
       <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -215,141 +235,31 @@ export default function MyTable() {
         </div>
       </header>
 
-      <div style={{ overflowX: "auto" }}>
-        <div style={{ padding: "20px", overflowX: "scroll" }}>
-          <table
+      <div>
+        <AgGridProvider modules={modules}>
+          <div
             style={{
-              borderCollapse: "collapse",
               width: "100%",
-              minWidth: "800px",
+              height: "81vh",
+              fontFamily: "Roboto, sans-serif",
             }}
           >
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      className={`${
-                        header.column.columnDef.meta?.className ?? ""
-                      }`}
-                      key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
-                      style={{
-                        border: "1px solid #ddd",
-                        padding: "10px",
-                        cursor: "pointer",
-                        background: "#e0e7f4",
-                      }}
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                      {{
-                        asc: " 🔼",
-                        desc: " 🔽",
-                      }[header.column.getIsSorted() as string] ?? ""}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      style={{
-                        border: "1px solid #ddd",
-                        padding: "8px",
-                        textAlign: "center",
-                      }}
-                      className={`${
-                        cell.column.columnDef.meta?.className ?? ""
-                      }`}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="h-2" />
-        <div className="flex items-center gap-2">
-          <button
-            className="border rounded p-1"
-            onClick={() => table.firstPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            {"<<"}
-          </button>
-          <button
-            className="border rounded p-1"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            {"<"}
-          </button>
-          <button
-            className="border rounded p-1"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            {">"}
-          </button>
-          <button
-            className="border rounded p-1"
-            onClick={() => table.lastPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            {">>"}
-          </button>
-          <span className="flex items-center gap-1">
-            <div>Page</div>
-            <strong>
-              {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount().toLocaleString()}
-            </strong>
-          </span>
-          <span className="flex items-center gap-1">
-            | Go to page:
-            <input
-              type="number"
-              min="1"
-              max={table.getPageCount()}
-              defaultValue={table.getState().pagination.pageIndex + 1}
-              onChange={(e) => {
-                const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                table.setPageIndex(page);
+            <AgGridReact
+              columnDefs={colDefs}
+              theme={myTheme}
+              defaultColDef={defaultColDef}
+              multiSortKey="ctrl"
+              rowModelType="serverSide"
+              pagination={true}
+              paginationPageSize={10}
+              cacheBlockSize={10} // page size
+              animateRows={true}
+              onGridReady={(params) => {
+                params.api.setGridOption("serverSideDatasource", datasource);
               }}
-              className="border p-1 rounded w-16"
             />
-          </span>
-          <select
-            value={table.getState().pagination.pageSize}
-            onChange={(e) => {
-              table.setPageSize(Number(e.target.value));
-            }}
-          >
-            {[10, 20, 30, 40, 50].map((pageSize) => (
-              <option key={pageSize} value={pageSize}>
-                Show {pageSize}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          Showing {table.getRowModel().rows.length.toLocaleString()} of{" "}
-          {table.getRowCount().toLocaleString()} Rows
-        </div>
+          </div>
+        </AgGridProvider>
       </div>
     </div>
   );
