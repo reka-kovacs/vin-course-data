@@ -9,27 +9,7 @@ export async function getConnection() {
 
 export async function upsertBatch(pool, batch) {
   if (!batch || batch.length === 0) return;
-  // const table = createTVP(batch);
   const request = pool.request();
-  // request.input("Batch", table, "dbo.CourseProgressType");
-  // const query = `
-  //   MERGE dbo.CourseProgress AS target
-  //   USING @Batch AS source
-  //   ON target.participant_id = source.participant_id
-  //      AND target.course_id = source.course_id
-  //   WHEN MATCHED THEN
-  //     UPDATE SET
-  //       course_title = source.course_title,
-  //       first_accessed = source.first_accessed,
-  //       last_accessed = source.last_accessed,
-  //       completion = source.completion
-  //   WHEN NOT MATCHED THEN
-  //     INSERT (participant_id, course_id, course_title, first_accessed, last_accessed, completion)
-  //     VALUES (source.participant_id, source.course_id, source.course_title, source.first_accessed, source.last_accessed, source.completion)
-  //   OUTPUT $action;
-  // `;
-
-  // const result = await request.query(query);
 
   batch.forEach((record, i) => {
     // Use parameterized queries to prevent SQL injection and handle data safely
@@ -85,36 +65,35 @@ function buildMergeQuery(batch) {
 }
 
 // only used for tvp method, but can be adapted for parameterized queries if needed
-function createTVP(batch) {
-  const table = new sql.Table("VIN.dbo.CourseProgressType");
-  table.create = true; // safe to create if necessary
+// function createTVP(batch) {
+//   const table = new sql.Table("VIN.dbo.CourseProgressType");
+//   table.create = true; // safe to create if necessary
 
-  // Columns must exactly match the SQL TVP type
-  table.columns.add("participant_id", sql.Int);
-  table.columns.add("course_id", sql.Int);
-  table.columns.add("course_title", sql.VarChar(sql.MAX));
-  table.columns.add("first_accessed", sql.DateTimeOffset);
-  table.columns.add("last_accessed", sql.DateTimeOffset);
-  table.columns.add("completion", sql.Float);
+//   // Columns must exactly match the SQL TVP type
+//   table.columns.add("participant_id", sql.Int);
+//   table.columns.add("course_id", sql.Int);
+//   table.columns.add("course_title", sql.VarChar(sql.MAX));
+//   table.columns.add("first_accessed", sql.DateTimeOffset);
+//   table.columns.add("last_accessed", sql.DateTimeOffset);
+//   table.columns.add("completion", sql.Float);
 
-  // Add rows safely
-  for (const r of batch) {
-    table.rows.add(
-      r.participant_id,
-      r.course_id,
-      r.course_title || null,
-      r.first_accessed ? new Date(r.first_accessed) : null,
-      r.last_accessed ? new Date(r.last_accessed) : null,
-      r.completion != null ? parseFloat(r.completion) : null,
-    );
-  }
+//   // Add rows safely
+//   for (const r of batch) {
+//     table.rows.add(
+//       r.participant_id,
+//       r.course_id,
+//       r.course_title || null,
+//       r.first_accessed ? new Date(r.first_accessed) : null,
+//       r.last_accessed ? new Date(r.last_accessed) : null,
+//       r.completion != null ? parseFloat(r.completion) : null,
+//     );
+//   }
 
-  return table;
-}
+//   return table;
+// }
 
 function safeNumber(value) {
-  if (value === null || value === undefined) return null;
-  if (isNaN(value)) return null;
+  if (value === null || value === undefined || isNaN(value)) return null;
   return value;
 }
 
