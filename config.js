@@ -3,14 +3,14 @@ dotenv.config();
 
 export const config = {
   mongo: {
-    uri: process.env.MONGO_URI || "mongodb://localhost:27017",
-    db: process.env.MONGO_DB || "ce",
-    collection: process.env.MONGO_COLLECTION || "course_data",
+    uri: process.env.MONGO_URI,
+    db: process.env.MONGO_DB,
+    collection: process.env.MONGO_COLLECTION,
   },
 
   sql: {
-    user: process.env.SQL_USER || "SA",
-    password: process.env.SQL_PASSWORD || "Huhihuho7065$",
+    user: process.env.SQL_USER,
+    password: process.env.SQL_PASSWORD,
     server: "localhost",
     database: "VIN",
     options: {

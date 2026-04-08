@@ -1,4 +1,4 @@
-import { extract, transform } from "./etl.js";
+import { extract, transform } from "./transform.js";
 import { getConnection, upsertBatch } from "./db.js";
 
 async function run() {
