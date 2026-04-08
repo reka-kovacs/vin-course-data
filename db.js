@@ -3,7 +3,7 @@ import { config } from "./config.js";
 
 let pool;
 export async function getConnection() {
-  pool = await sql.connect(config.sql);
+  pool = sql.connect(config.sql);
   return pool;
 }
 
@@ -12,7 +12,7 @@ export async function upsertBatch(pool, batch) {
   const request = pool.request();
 
   batch.forEach((record, i) => {
-    // Use parameterized queries to prevent SQL injection and handle data safely
+    // use parameterized queries to prevent SQL injection and handle data safely
     request.input(`p${i}`, sql.Int, record.participant_id);
     request.input(`c${i}`, sql.Int, record.course_id);
     request.input(`t${i}`, sql.VarChar(255), record.course_title || null);
@@ -64,34 +64,6 @@ function buildMergeQuery(batch) {
   `;
 }
 
-// only used for tvp method, but can be adapted for parameterized queries if needed
-// function createTVP(batch) {
-//   const table = new sql.Table("VIN.dbo.CourseProgressType");
-//   table.create = true; // safe to create if necessary
-
-//   // Columns must exactly match the SQL TVP type
-//   table.columns.add("participant_id", sql.Int);
-//   table.columns.add("course_id", sql.Int);
-//   table.columns.add("course_title", sql.VarChar(sql.MAX));
-//   table.columns.add("first_accessed", sql.DateTimeOffset);
-//   table.columns.add("last_accessed", sql.DateTimeOffset);
-//   table.columns.add("completion", sql.Float);
-
-//   // Add rows safely
-//   for (const r of batch) {
-//     table.rows.add(
-//       r.participant_id,
-//       r.course_id,
-//       r.course_title || null,
-//       r.first_accessed ? new Date(r.first_accessed) : null,
-//       r.last_accessed ? new Date(r.last_accessed) : null,
-//       r.completion != null ? parseFloat(r.completion) : null,
-//     );
-//   }
-
-//   return table;
-// }
-
 function safeNumber(value) {
   if (value === null || value === undefined || isNaN(value)) return null;
   return value;
@@ -106,7 +78,6 @@ export function safeDate(value) {
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // ISO string or Date object
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
 }

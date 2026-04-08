@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "main": "main.js",
   "type": "module",
-  "scripts": {
-    "dev": "nodemon server.js",
-    "etl": "node main.js"
-  },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
