@@ -3,11 +3,21 @@
   "version": "1.0.0",
   "main": "main.js",
   "type": "module",
+  "scripts": {
+    "test": "jest"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "mongodb": "^6.21.0",
     "mssql": "^10.0.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.2",
+    "@types/jest": "^30.0.0",
+    "babel-jest": "^30.3.0",
+    "jest": "^30.3.0"
   }
 }

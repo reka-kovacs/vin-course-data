@@ -1,7 +1,7 @@
 import { extract, transform } from "./transform.js";
 import { getConnection, upsertBatch } from "./db.js";
 
-async function run() {
+export async function run() {
   console.log("Starting process...");
 
   const docs = await extract();
@@ -22,7 +22,6 @@ async function run() {
   }
 
   console.log("Process completed successfully.");
-  process.exit(0);
 }
 
 run().catch((err) => {
