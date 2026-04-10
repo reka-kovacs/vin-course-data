@@ -29,6 +29,10 @@ app.get("/api/progress", async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send("API is running");
+});
+
 app.listen(3001, () => {
   console.log("API running on http://localhost:3001");
 });
