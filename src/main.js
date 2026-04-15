@@ -1,5 +1,5 @@
 import { extract, transform } from "./transform.js";
-import { getConnection, upsertBatch } from "./db.js";
+import { getConnection, upsertBatch, closeConnection } from "./db.js";
 
 export async function run() {
   console.log("Starting process...");
@@ -15,11 +15,18 @@ export async function run() {
   const batches = chunkArray(records, 200);
   let processed = 0;
 
+  await extract(async (docsBatch) => {
+    const records = transform(docsBatch);
+    await upsertBatch(pool, records);
+  });
+
   for (const batch of batches) {
     await upsertBatch(pool, batch);
     processed += batch.length;
     console.log(`Processed ${processed} records...`);
   }
+
+  await closeConnection();
 
   console.log("Process completed successfully.");
 }

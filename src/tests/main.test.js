@@ -6,7 +6,7 @@ describe("Main functions", () => {
   let pool;
 
   beforeAll(async () => {
-    pool = await sql.connect(config.sql);
+    pool = sql.connect(config.sql);
   });
 
   afterAll(async () => {

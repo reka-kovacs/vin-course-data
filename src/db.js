@@ -3,8 +3,16 @@ import { config } from "./config.js";
 
 let pool;
 export async function getConnection() {
-  pool = sql.connect(config.sql);
+  if (!pool) {
+    pool = await sql.connect(config.sql);
+  }
   return pool;
+}
+
+export async function closeConnection() {
+  if (pool) {
+    await pool.close();
+  }
 }
 
 export async function upsertBatch(pool, batch) {
@@ -27,7 +35,9 @@ export async function upsertBatch(pool, batch) {
   const result = await request.query(query);
 
   // count how many are inserted vs updated for logging
-  const count = result.recordset.reduce((acc, row) => {
+  const rows = result.recordset || [];
+
+  const count = rows.reduce((acc, row) => {
     acc[row.action] = (acc[row.action] || 0) + 1;
     return acc;
   }, {});
@@ -39,28 +49,57 @@ export async function upsertBatch(pool, batch) {
 function buildMergeQuery(batch) {
   const values = batch
     .map((_, i) => `(@p${i}, @c${i}, @t${i}, @f${i}, @l${i}, @comp${i})`)
-    .join(",\n");
+    .join(",");
+
+  const source = `
+    (VALUES ${values}) AS source (
+      participant_id,
+      course_id,
+      course_title,
+      first_accessed,
+      last_accessed,
+      completion
+    )
+  `;
 
   return `
-    MERGE CourseProgress AS target
-    USING (VALUES ${values})
-    AS source (participant_id, course_id, course_title, first_accessed, last_accessed, completion)
+    DECLARE @actions TABLE (action NVARCHAR(10));
 
+    UPDATE target
+    SET 
+        target.course_title = source.course_title,
+        target.first_accessed = source.first_accessed,
+        target.last_accessed = source.last_accessed,
+        target.completion = source.completion
+    OUTPUT 'UPDATE' INTO @actions
+    FROM CourseProgress AS target
+    INNER JOIN ${source}
     ON target.participant_id = source.participant_id
-       AND target.course_id = source.course_id
+    AND target.course_id = source.course_id;
 
-    WHEN MATCHED THEN
-      UPDATE SET 
-        course_title = source.course_title,
-        first_accessed = source.first_accessed,
-        last_accessed = source.last_accessed,
-        completion = source.completion
+    INSERT INTO CourseProgress (
+        participant_id,
+        course_id,
+        course_title,
+        first_accessed,
+        last_accessed,
+        completion
+    )
+    OUTPUT 'INSERT' INTO @actions
+    SELECT 
+        source.participant_id,
+        source.course_id,
+        source.course_title,
+        source.first_accessed,
+        source.last_accessed,
+        source.completion
+    FROM ${source}
+    LEFT JOIN CourseProgress AS target
+        ON target.participant_id = source.participant_id
+        AND target.course_id = source.course_id
+    WHERE target.participant_id IS NULL;
 
-    WHEN NOT MATCHED THEN
-      INSERT (participant_id, course_id, course_title, first_accessed, last_accessed, completion)
-      VALUES (source.participant_id, source.course_id, source.course_title, source.first_accessed, source.last_accessed, source.completion)
-
-      OUTPUT $action AS action;
+    SELECT action FROM @actions;
   `;
 }
 

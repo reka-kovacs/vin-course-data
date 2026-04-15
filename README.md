@@ -25,7 +25,6 @@ npm start
 
 ## Design Decisions
 
-- Used SQL Server MERGE for idempotent upserts
 - Implemented batching to reduce load
 - Stored all timestamps in UTC
 - Added data normalization layer to handle inconsistent Mongo data

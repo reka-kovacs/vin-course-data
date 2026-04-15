@@ -9,11 +9,30 @@ export async function extract() {
   const db = client.db(config.mongo.db);
   const collection = db.collection(config.mongo.collection);
 
-  const docs = await collection
+  const batchSize = 200;
+
+  const cursor = collection
     .find({
       "course_data.course_id": { $in: config.courseIDs },
     })
-    .toArray();
+    .batchSize(batchSize);
+
+  const docs = [];
+
+  let batch = [];
+
+  for await (const doc of cursor) {
+    batch.push(doc);
+
+    if (batch.length === batchSize) {
+      docs.push(...batch);
+      batch = [];
+    }
+  }
+
+  if (batch.length > 0) {
+    docs.push(...batch);
+  }
 
   await client.close();
   return docs;
