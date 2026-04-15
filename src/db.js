@@ -70,14 +70,18 @@ function safeNumber(value) {
 }
 
 export function safeDate(value) {
-  if (!value) return null;
-
-  // 13-digit timestamp in milliseconds
-  if (typeof value === "number" && value.toString().length === 13) {
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
+  if (value === null || value === undefined || value === "") {
+    return null;
   }
 
-  const d = new Date(value);
+  let parsed = value;
+
+  if (typeof value === "number" && value < 1e12) {
+    // if it's in seconds (10 digits), convert to milliseconds
+    parsed = value * 1000;
+  }
+
+  const d = new Date(parsed);
+
   return isNaN(d.getTime()) ? null : d;
 }
