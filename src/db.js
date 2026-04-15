@@ -35,9 +35,7 @@ export async function upsertBatch(pool, batch) {
   const result = await request.query(query);
 
   // count how many are inserted vs updated for logging
-  const rows = result.recordset || [];
-
-  const count = rows.reduce((acc, row) => {
+  const count = result.recordset.reduce((acc, row) => {
     acc[row.action] = (acc[row.action] || 0) + 1;
     return acc;
   }, {});

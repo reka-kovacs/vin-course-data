@@ -26,8 +26,6 @@ export async function run() {
     console.log(`Processed ${processed} records...`);
   }
 
-  await closeConnection();
-
   console.log("Process completed successfully.");
 }
 
