@@ -7,7 +7,7 @@ This api imports course progress data from a provided MongoDB dump and writes it
 To import data into SQL server:
 
 ```bash
-npm main
+npm run main
 ```
 
 To run:
