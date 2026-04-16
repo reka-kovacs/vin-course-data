@@ -10,34 +10,57 @@ export async function getConnection() {
   return pool;
 }
 
-export async function closeConnection() {
-  if (pool) {
-    pool.close();
+export async function closeConnection(poolToClose) {
+  if (poolToClose) {
+    await poolToClose.close();
+    pool = null;
   }
 }
 
 export async function upsertBatch(pool, batch) {
   if (!batch || batch.length === 0) return;
-  const request = pool.request();
 
-  batch.forEach((record, i) => {
-    // use parameterized queries to prevent SQL injection and handle data safely
-    // not ideal for large batches or complex objects, but works for our simple structure
-    request.input(`p${i}`, sql.Int, record.participant_id);
-    request.input(`c${i}`, sql.Int, record.course_id);
-    request.input(`t${i}`, sql.VarChar(255), record.course_title || null);
-    request.input(`f${i}`, sql.DateTimeOffset, safeDate(record.first_accessed));
-    request.input(`l${i}`, sql.DateTimeOffset, safeDate(record.last_accessed));
-    request.input(`comp${i}`, sql.Float, safeNumber(record.completion));
-  });
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
 
-  const query = buildMergeQuery(batch);
-  // need to await the query here to ensure it completes before moving on to the next batch
-  // otherwise we might have multiple concurrent requests that could cause issues
-  const result = await request.query(query);
+  let result;
+
+  try {
+    const request = transaction.request();
+
+    batch.forEach((record, i) => {
+      // use parameterized queries to prevent SQL injection and handle data safely
+      // not ideal for large batches or complex objects, but works for our simple structure
+      request.input(`p${i}`, sql.Int, record.participant_id);
+      request.input(`c${i}`, sql.Int, record.course_id);
+      request.input(`t${i}`, sql.VarChar(255), record.course_title || null);
+      request.input(
+        `f${i}`,
+        sql.DateTimeOffset,
+        safeDate(record.first_accessed),
+      );
+      request.input(
+        `l${i}`,
+        sql.DateTimeOffset,
+        safeDate(record.last_accessed),
+      );
+      request.input(`comp${i}`, sql.Float, safeNumber(record.completion));
+    });
+
+    const query = buildMergeQuery(batch);
+
+    result = await request.query(query);
+
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    console.error("Batch failed:", err);
+    throw err;
+  }
 
   // count how many are inserted vs updated for logging
-  const count = result.recordset.reduce((acc, row) => {
+  const rows = result?.recordset || [];
+  const count = rows.reduce((acc, row) => {
     acc[row.action] = (acc[row.action] || 0) + 1;
     return acc;
   }, {});

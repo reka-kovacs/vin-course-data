@@ -14,9 +14,12 @@ export async function extractStream(onBatch) {
 
     // use a cursor to stream data in batches
     const cursor = collection
-      .find({
-        "course_data.course_id": { $in: config.courseIDs },
-      })
+      .find(
+        {
+          "course_data.course_id": { $in: config.courseIDs },
+        },
+        { noCursorTimeout: true },
+      )
       .batchSize(batchSize);
 
     let batch = [];
@@ -52,7 +55,9 @@ export function transform(docs) {
         course_title: doc.course_data.title,
         first_accessed: safeDate(doc.participant_data?.date_first_accessed),
         last_accessed: safeDate(doc.participant_data?.date_last_accessed),
-        completion: parseFloat(doc.participant_data?.course_completion) || null,
+        completion: isNaN(parseFloat(doc.participant_data?.course_completion))
+          ? null
+          : parseFloat(doc.participant_data?.course_completion),
       });
     } catch (err) {
       // skip and keep track of bad records
@@ -61,6 +66,7 @@ export function transform(docs) {
         `Skipping bad record for participant_id ${doc.participant_data?.participant_id} and course_id ${doc.course_data?.course_id}:`,
         err,
       );
+      console.warn("Bad record:", { doc, error: err });
       continue;
     }
   }

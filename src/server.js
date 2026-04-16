@@ -11,13 +11,7 @@ app.get("/api/progress", async (req, res) => {
     const pool = await getConnection();
 
     const result = await pool.request().query(`
-      SELECT 
-        participant_id,
-        course_id,
-        course_title,
-        completion,
-        last_accessed
-      FROM dbo.CourseProgress
+      SELECT * FROM dbo.CourseProgress
       ORDER BY participant_id, course_id
     `);
 
