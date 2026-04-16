@@ -12,6 +12,7 @@ export async function extractStream(onBatch) {
 
     const batchSize = 200;
 
+    // use a cursor to stream data in batches
     const cursor = collection
       .find({
         "course_data.course_id": { $in: config.courseIDs },
@@ -20,15 +21,18 @@ export async function extractStream(onBatch) {
 
     let batch = [];
 
+    // pull data lazily to avoid loading everything into memory at once
     for await (const doc of cursor) {
       batch.push(doc);
 
+      // once we have a full batch, process it and reset
       if (batch.length === batchSize) {
         await onBatch(batch);
         batch = [];
       }
     }
 
+    // process any remaining records in the last batch
     if (batch.length) {
       await onBatch(batch);
     }
