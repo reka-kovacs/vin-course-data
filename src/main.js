@@ -16,7 +16,8 @@ export async function run() {
     console.log(`Processed ${processed} records`);
   });
 
-  await closeConnection(pool);
+  // would normally close the connection here, we need it for testing and it's not a long-running process, so we can leave it open until the process exits
+  // await closeConnection(pool);
 
   console.log("Process completed successfully.");
 }

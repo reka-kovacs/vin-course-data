@@ -1,17 +1,18 @@
 import sql from "mssql";
 import { run } from "../main.js";
 import { config } from "../config.js";
+import { getConnection, closeConnection } from "../db.js";
 
 describe("Main functions", () => {
   let pool;
 
   beforeAll(async () => {
-    pool = await sql.connect(config.sql);
+    pool = await getConnection();
   });
 
   afterAll(async () => {
-    await pool.request().query(`DELETE FROM CourseProgress`);
-    await pool.close();
+    await pool.request().query(`TRUNCATE TABLE CourseProgress`);
+    await closeConnection(pool);
   });
 
   test("running twice does not create duplicates", async () => {
