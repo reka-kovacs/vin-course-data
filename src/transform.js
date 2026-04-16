@@ -66,7 +66,6 @@ export function transform(docs) {
         `Skipping bad record for participant_id ${doc.participant_data?.participant_id} and course_id ${doc.course_data?.course_id}:`,
         err,
       );
-      console.warn("Bad record:", { doc, error: err });
       continue;
     }
   }
