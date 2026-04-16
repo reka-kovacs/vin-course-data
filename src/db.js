@@ -4,7 +4,7 @@ import { config } from "./config.js";
 let pool;
 export async function getConnection() {
   if (!pool) {
-    pool = await sql.connect(config.sql);
+    pool = sql.connect(config.sql);
   }
   return pool;
 }
@@ -21,6 +21,7 @@ export async function upsertBatch(pool, batch) {
 
   batch.forEach((record, i) => {
     // use parameterized queries to prevent SQL injection and handle data safely
+    // not ideal for large batches or complex objects, but works for our simple structure
     request.input(`p${i}`, sql.Int, record.participant_id);
     request.input(`c${i}`, sql.Int, record.course_id);
     request.input(`t${i}`, sql.VarChar(255), record.course_title || null);
