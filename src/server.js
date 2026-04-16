@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/progress/crosstab", async (req, res) => {
+app.get("/api/progress", async (req, res) => {
   try {
     const pool = await getConnection();
 
