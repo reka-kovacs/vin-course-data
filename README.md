@@ -25,7 +25,7 @@ npm start
 
 ## Design Decisions
 
-- Implemented batching to reduce load
+- Implemented stream batching to reduce load
 - Stored all timestamps in UTC
 - Added data normalization layer to handle inconsistent Mongo data
 
