@@ -2,40 +2,39 @@ import { MongoClient } from "mongodb";
 import { config } from "./config.js";
 import { safeDate } from "./db.js";
 
-export async function extract() {
+export async function extractStream(onBatch) {
   const client = new MongoClient(config.mongo.uri);
   await client.connect();
 
-  const db = client.db(config.mongo.db);
-  const collection = db.collection(config.mongo.collection);
+  try {
+    const db = client.db(config.mongo.db);
+    const collection = db.collection(config.mongo.collection);
 
-  const batchSize = 200;
+    const batchSize = 200;
 
-  const cursor = collection
-    .find({
-      "course_data.course_id": { $in: config.courseIDs },
-    })
-    .batchSize(batchSize);
+    const cursor = collection
+      .find({
+        "course_data.course_id": { $in: config.courseIDs },
+      })
+      .batchSize(batchSize);
 
-  const docs = [];
+    let batch = [];
 
-  let batch = [];
+    for await (const doc of cursor) {
+      batch.push(doc);
 
-  for await (const doc of cursor) {
-    batch.push(doc);
-
-    if (batch.length === batchSize) {
-      docs.push(...batch);
-      batch = [];
+      if (batch.length === batchSize) {
+        await onBatch(batch);
+        batch = [];
+      }
     }
-  }
 
-  if (batch.length > 0) {
-    docs.push(...batch);
+    if (batch.length) {
+      await onBatch(batch);
+    }
+  } finally {
+    await client.close();
   }
-
-  await client.close();
-  return docs;
 }
 
 export function transform(docs) {
