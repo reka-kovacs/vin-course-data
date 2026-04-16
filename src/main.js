@@ -25,11 +25,3 @@ run().catch((err) => {
   console.error("Process failed:", err);
   process.exit(1);
 });
-
-function chunkArray(array, size) {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
-}
