@@ -23,6 +23,7 @@ app.get("/api/progress", async (req, res) => {
 
     const rows = result.recordset;
 
+    // build a crosstab structure: list of participants, list of courses, and a matrix of progress
     const participantsSet = new Set();
     const coursesMap = new Map();
     const matrix = {};
@@ -40,6 +41,7 @@ app.get("/api/progress", async (req, res) => {
         });
       }
 
+      // build a matrix of participant_id -> course_id -> { completion, last_accessed }
       if (!matrix[p]) matrix[p] = {};
 
       matrix[p][c] = {
@@ -55,7 +57,7 @@ app.get("/api/progress", async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch crosstab data" });
+    res.status(500).json({ error: "Failed to fetch data" });
   }
 });
 
