@@ -3,6 +3,7 @@ import { config } from "./config.js";
 
 let pool;
 export async function getConnection() {
+  // reuse existing connection if available, otherwise create a new one
   if (!pool) {
     pool = sql.connect(config.sql);
   }
@@ -11,7 +12,7 @@ export async function getConnection() {
 
 export async function closeConnection() {
   if (pool) {
-    await pool.close();
+    pool.close();
   }
 }
 
